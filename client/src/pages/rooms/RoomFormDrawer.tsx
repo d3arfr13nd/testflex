@@ -112,6 +112,20 @@ export const RoomFormDrawer: React.FC<RoomFormDrawerProps> = ({ open, onClose })
     >
       <Form form={form} layout="vertical">
         <Form.Item
+          name="slug"
+          label="Slug"
+          rules={[
+            { required: true, message: 'Please input slug!' },
+            { 
+              pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, 
+              message: 'Slug must be lowercase letters, numbers, and hyphens only!' 
+            }
+          ]}
+        >
+          <Input placeholder="e.g., conference-room-a" />
+        </Form.Item>
+
+        <Form.Item
           name="name"
           label="Room Name"
           rules={[{ required: true, message: 'Please input room name!' }]}

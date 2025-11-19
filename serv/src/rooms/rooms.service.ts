@@ -47,6 +47,18 @@ export class RoomsService {
       });
     }
 
+    if (filters?.minCapacity !== undefined) {
+      queryBuilder.andWhere('room.capacity >= :minCapacity', {
+        minCapacity: filters.minCapacity,
+      });
+    }
+
+    if (filters?.maxCapacity !== undefined) {
+      queryBuilder.andWhere('room.capacity <= :maxCapacity', {
+        maxCapacity: filters.maxCapacity,
+      });
+    }
+
     if (filters?.minPrice !== undefined) {
       queryBuilder.andWhere('room.priceHour >= :minPrice', {
         minPrice: filters.minPrice,
@@ -57,6 +69,14 @@ export class RoomsService {
       queryBuilder.andWhere('room.priceHour <= :maxPrice', {
         maxPrice: filters.maxPrice,
       });
+    }
+
+    // Search filter - search in name, description, and slug
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(room.name ILIKE :search OR room.description ILIKE :search OR room.slug ILIKE :search)',
+        { search: `%${filters.search}%` }
+      );
     }
 
     // Filter by status - only show active rooms for public endpoints

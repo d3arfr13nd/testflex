@@ -24,6 +24,7 @@ export interface Room {
 }
 
 export interface CreateRoomDto {
+  slug: string;
   name: string;
   type: RoomType;
   capacity: number;

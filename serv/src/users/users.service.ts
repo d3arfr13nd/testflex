@@ -46,7 +46,7 @@ export class UsersService {
     page: number = 1,
     limit: number = 10,
     filters?: { role?: UserRole; search?: string },
-  ): Promise<{ users: Omit<User, 'passwordHash'>[]; total: number }> {
+  ): Promise<{ data: Omit<User, 'passwordHash'>[]; total: number; page: number; limit: number }> {
     const queryBuilder = this.userRepository.createQueryBuilder('user');
 
     if (filters?.role) {
@@ -77,8 +77,10 @@ export class UsersService {
     const [users, total] = await queryBuilder.getManyAndCount();
 
     return {
-      users,
+      data: users,
       total,
+      page,
+      limit,
     };
   }
 

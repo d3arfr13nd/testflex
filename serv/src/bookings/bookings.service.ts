@@ -115,7 +115,7 @@ export class BookingsService {
   async findAll(
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ bookings: Booking[]; total: number }> {
+  ): Promise<{ data: Booking[]; total: number; page: number; limit: number }> {
     const [bookings, total] = await this.bookingRepository.findAndCount({
       relations: ['room', 'user'],
       order: { createdAt: 'DESC' },
@@ -123,7 +123,7 @@ export class BookingsService {
       take: limit,
     });
 
-    return { bookings, total };
+    return { data: bookings, total, page, limit };
   }
 
   async findByUser(userId: number): Promise<Booking[]> {

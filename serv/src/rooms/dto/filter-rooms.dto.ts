@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsInt, IsNumber, IsDateString, Min } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, IsNumber, IsDateString, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoomType } from '../entities/room.entity';
 
@@ -15,6 +15,18 @@ export class FilterRoomsDto {
 
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  minCapacity?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  maxCapacity?: number;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   minPrice?: number;
@@ -24,6 +36,10 @@ export class FilterRoomsDto {
   @IsNumber()
   @Min(0)
   maxPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @IsOptional()
   @IsDateString()
