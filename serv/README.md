@@ -99,11 +99,160 @@ FRONTEND_URL=http://localhost:3000
 
 - `GET /api/users` (admin) - Get all users with pagination and filters
 - `GET /api/users/:id` (admin) - Get user by ID
-- `PUT /api/users/:id` (admin) - Update user
+- `PATCH /api/users/:id` (admin) - Update user
 - `DELETE /api/users/:id` (admin) - Delete user
 - `GET /api/users/me` (user) - Get current user profile
-- `PUT /api/users/me` (user) - Update current user profile
-- `PUT /api/users/me/password` (user) - Change current user password
+- `PATCH /api/users/me` (user) - Update current user profile
+- `PATCH /api/users/me/password` (user) - Change current user password
+
+### Rooms Endpoints
+
+- `GET /api/rooms` (public) - Get all rooms with filters
+- `GET /api/rooms/:id` (public) - Get room by ID
+- `GET /api/rooms/availability/:id` (public) - Get room availability for a specific date
+- `POST /api/rooms` (admin) - Create a new room
+- `PUT /api/rooms/:id` (admin) - Update room
+- `DELETE /api/rooms/:id` (admin) - Delete room
+- `POST /api/rooms/upload?roomId=:id` (admin) - Upload photos for a room
+
+### Bookings Endpoints
+
+- `POST /api/bookings` (user) - Create a new booking
+- `GET /api/bookings` (admin) - Get all bookings with pagination and filters
+- `GET /api/bookings/user` (user) - Get current user's bookings
+- `GET /api/bookings/:id` (user/admin) - Get booking by ID
+- `PUT /api/bookings/:id/cancel` (user/admin) - Cancel a booking
+- `PUT /api/bookings/:id/status` (admin) - Update booking status
+
+## Architecture Overview
+
+### Controllers
+
+#### AuthController (`src/auth/auth.controller.ts`)
+Handles authentication and authorization endpoints.
+
+**Methods:**
+- `register(registerDto: RegisterDto)` - Register a new user account
+- `login(loginDto: LoginDto)` - Authenticate user and return JWT tokens
+- `refresh()` - Refresh access token using refresh token (requires JwtRefreshGuard)
+- `logout()` - Invalidate user tokens (requires JwtAuthGuard)
+- `forgotPassword(forgotPasswordDto: ForgotPasswordDto)` - Request password reset link
+- `resetPassword(resetPasswordDto: ResetPasswordDto)` - Reset password with token
+- `getProfile()` - Get current authenticated user profile (requires JwtAuthGuard)
+
+#### UsersController (`src/users/users.controller.ts`)
+Manages user CRUD operations with role-based access control.
+
+**Methods:**
+- `create(createUserDto: CreateUserDto)` - Create new user (Admin only)
+- `findAll(page, limit, role?, search?)` - Get paginated list of users with filters (Admin only)
+- `findOne(id: number)` - Get user by ID (Admin only)
+- `update(id: number, updateUserDto: UpdateUserDto)` - Update user (Admin only)
+- `remove(id: number)` - Delete user (Admin only)
+- `getMe()` - Get current user profile (authenticated users)
+- `updateMe(updateUserDto: UpdateUserDto)` - Update current user profile (authenticated users)
+- `updateMyPassword(updatePasswordDto: UpdatePasswordDto)` - Change current user password (authenticated users)
+
+#### RoomsController (`src/rooms/rooms.controller.ts`)
+Manages room/space management with public read access and admin write access.
+
+**Methods:**
+- `findAll(filters: FilterRoomsDto)` - Get all rooms with optional filters (public)
+- `findOne(id: number)` - Get room by ID (public)
+- `getAvailability(id: number, date: string)` - Get room availability time slots for a date (public)
+- `create(createRoomDto: CreateRoomDto)` - Create new room (Admin only)
+- `update(id: number, updateRoomDto: UpdateRoomDto)` - Update room (Admin only)
+- `remove(id: number)` - Delete room (Admin only)
+- `uploadFiles(files, roomId)` - Upload photos for a room (Admin only, max 10 files, 5MB each)
+
+#### BookingsController (`src/bookings/bookings.controller.ts`)
+Handles booking creation and management with user/admin access control.
+
+**Methods:**
+- `create(createBookingDto: CreateBookingDto, idempotencyKey?)` - Create new booking (authenticated users)
+- `findAll(page, limit, status?, dateStart?, dateEnd?)` - Get all bookings with pagination and filters (Admin only)
+- `findByUser()` - Get current user's bookings (authenticated users)
+- `findOne(id: number)` - Get booking by ID (users can only see their own, admins can see all)
+- `cancel(id: number)` - Cancel a booking (users can cancel their own, admins can cancel any)
+- `updateStatus(id: number, updateStatusDto: UpdateBookingStatusDto)` - Update booking status (Admin only)
+
+### Services
+
+#### AuthService (`src/auth/auth.service.ts`)
+Core authentication logic and token management.
+
+**Methods:**
+- `register(registerDto: RegisterDto)` - Create new user account and generate tokens
+- `login(loginDto: LoginDto)` - Authenticate user credentials and generate tokens
+- `refresh(userId: number, oldTokenVersion: number)` - Generate new tokens with token rotation
+- `logout(userId: number)` - Invalidate all user tokens by incrementing token version
+- `forgotPassword(forgotPasswordDto: ForgotPasswordDto)` - Generate and send password reset token
+- `resetPassword(resetPasswordDto: ResetPasswordDto)` - Reset user password with token
+- `getProfile(userId: number)` - Get user profile information
+- `generateTokens(userId: number, role: string, tokenVersion: number)` - Private method to generate JWT tokens
+
+#### UsersService (`src/users/users.service.ts`)
+User management and data access operations.
+
+**Methods:**
+- `create(createUserDto: CreateUserDto)` - Create new user with password hashing
+- `findAll(page: number, limit: number, filters?)` - Get paginated users with role and search filters
+- `findOne(id: number)` - Get user by ID (excludes password hash)
+- `findByEmail(email: string)` - Find user by email address
+- `update(id: number, updateUserDto: UpdateUserDto)` - Update user information
+- `updatePassword(id: number, updatePasswordDto: UpdatePasswordDto)` - Change user password with validation
+- `incrementTokenVersion(id: number)` - Increment token version to invalidate tokens
+- `resetPasswordById(id: number, newPasswordHash: string)` - Reset password by ID (used in password reset flow)
+- `remove(id: number)` - Delete user from database
+
+#### RoomsService (`src/rooms/rooms.service.ts`)
+Room/space management and availability checking.
+
+**Methods:**
+- `create(createRoomDto: CreateRoomDto)` - Create new room with slug uniqueness check
+- `findAll(filters?: FilterRoomsDto)` - Get rooms with advanced filtering:
+  - Filter by type (desk, vip, meeting, conference)
+  - Filter by capacity (min/max)
+  - Filter by price (min/max)
+  - Search by name, description, or slug
+  - Only returns active rooms for public endpoints
+- `findOne(id: number)` - Get room by ID
+- `findBySlug(slug: string)` - Find room by unique slug
+- `update(id: number, updateRoomDto: UpdateRoomDto)` - Update room with slug conflict checking
+- `remove(id: number)` - Delete room
+- `getAvailability(id: number, date: string)` - Get hourly time slots (9 AM - 6 PM) for a specific date
+- `addPhotos(id: number, photoUrls: string[])` - Add photo URLs to room's photo array
+
+#### BookingsService (`src/bookings/bookings.service.ts`)
+Booking management with conflict detection and access control.
+
+**Methods:**
+- `create(userId: number, createBookingDto: CreateBookingDto, idempotencyKey?)` - Create booking with:
+  - Idempotency key support to prevent duplicate bookings
+  - Date validation (end > start, start not in past)
+  - Overlapping booking detection
+  - Automatic price calculation based on room rate and duration
+- `findAll(page: number, limit: number, filters?)` - Get paginated bookings with:
+  - Status filter (pending, paid, cancelled, done)
+  - Date range filters (dateStart, dateEnd)
+  - Includes room and user relations
+- `findByUser(userId: number)` - Get all bookings for a specific user
+- `findOne(id: number, userId?: number, isAdmin?: boolean)` - Get booking with access control
+- `cancel(id: number, userId: number, isAdmin: boolean)` - Cancel booking with:
+  - Access control (users can only cancel their own)
+  - Status validation (cannot cancel already cancelled or done bookings)
+- `updateStatus(id: number, updateStatusDto: UpdateBookingStatusDto)` - Update booking status (Admin only)
+  - Validates status transitions (e.g., cannot cancel completed bookings)
+
+#### EmailService (`src/auth/email.service.ts`)
+Email sending functionality for password reset and notifications.
+
+**Methods:**
+- `sendPasswordResetLink(email: string, userName: string, resetToken: string)` - Send password reset email with:
+  - HTML and plain text versions
+  - Reset link and token
+  - Expiration warning
+- `sendPasswordResetConfirmation(email: string, userName: string)` - Send confirmation email after successful password reset
 
 ## Security Features
 
@@ -116,6 +265,8 @@ FRONTEND_URL=http://localhost:3000
 - Input validation with class-validator
 - Email format validation
 - Minimum password length (8 characters)
+- Idempotency key support for booking creation
+- Overlapping booking detection
 
 ## Project setup
 
