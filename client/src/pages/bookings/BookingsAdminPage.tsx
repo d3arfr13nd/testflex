@@ -14,7 +14,13 @@ export const BookingsAdminPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
-  const { data, isLoading } = useAllBookings(page, limit);
+  const filters = {
+    ...(statusFilter && { status: statusFilter }),
+    ...(dateRange && dateRange[0] && { dateStart: dateRange[0].format('YYYY-MM-DD') }),
+    ...(dateRange && dateRange[1] && { dateEnd: dateRange[1].format('YYYY-MM-DD') }),
+  };
+
+  const { data, isLoading } = useAllBookings(page, limit, filters);
   const updateStatus = useUpdateBookingStatus();
 
   const getStatusColor = (status: string) => {
@@ -105,7 +111,11 @@ export const BookingsAdminPage: React.FC = () => {
               placeholder="Filter by status"
               allowClear
               style={{ width: 150 }}
-              onChange={(value) => setStatusFilter(value)}
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
               options={[
                 { label: 'Pending', value: 'pending' },
                 { label: 'Paid', value: 'paid' },
@@ -114,7 +124,11 @@ export const BookingsAdminPage: React.FC = () => {
               ]}
             />
             <RangePicker
-              onChange={(dates) => setDateRange(dates as [Dayjs | null, Dayjs | null])}
+              value={dateRange}
+              onChange={(dates) => {
+                setDateRange(dates ? (dates as [Dayjs | null, Dayjs | null]) : [null, null]);
+                setPage(1);
+              }}
             />
           </Space>
         }

@@ -44,8 +44,11 @@ export class BookingsController {
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
+    @Query('dateStart') dateStart?: string,
+    @Query('dateEnd') dateEnd?: string,
   ) {
-    return this.bookingsService.findAll(page, limit);
+    return this.bookingsService.findAll(page, limit, { status, dateStart, dateEnd });
   }
 
   @Get('user')

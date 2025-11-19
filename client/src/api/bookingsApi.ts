@@ -51,8 +51,15 @@ export const bookingsApi = {
   getAll: async (params?: {
     page?: number;
     limit?: number;
+    status?: BookingStatus;
+    dateStart?: string;
+    dateEnd?: string;
   }): Promise<BookingsListResponse> => {
-    const { data } = await axiosClient.get<BookingsListResponse>('/api/bookings', { params });
+    // Remove undefined values from params
+    const cleanParams = Object.fromEntries(
+      Object.entries(params || {}).filter(([_, value]) => value !== undefined)
+    );
+    const { data } = await axiosClient.get<BookingsListResponse>('/api/bookings', { params: cleanParams });
     return data;
   },
 

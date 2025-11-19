@@ -9,10 +9,14 @@ export const useMyBookings = () => {
   });
 };
 
-export const useAllBookings = (page = 1, limit = 10) => {
+export const useAllBookings = (
+  page = 1,
+  limit = 10,
+  filters?: { status?: string; dateStart?: string; dateEnd?: string }
+) => {
   return useQuery({
-    queryKey: ['bookings', page, limit],
-    queryFn: () => bookingsApi.getAll({ page, limit }),
+    queryKey: ['bookings', page, limit, filters],
+    queryFn: () => bookingsApi.getAll({ page, limit, ...filters }),
   });
 };
 

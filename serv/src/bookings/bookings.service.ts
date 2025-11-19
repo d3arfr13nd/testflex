@@ -115,13 +115,36 @@ export class BookingsService {
   async findAll(
     page: number = 1,
     limit: number = 10,
+    filters?: { status?: string; dateStart?: string; dateEnd?: string },
   ): Promise<{ data: Booking[]; total: number; page: number; limit: number }> {
-    const [bookings, total] = await this.bookingRepository.findAndCount({
-      relations: ['room', 'user'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const queryBuilder = this.bookingRepository.createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.room', 'room')
+      .leftJoinAndSelect('booking.user', 'user');
+
+    // Apply status filter
+    if (filters?.status) {
+      queryBuilder.andWhere('booking.status = :status', { status: filters.status });
+    }
+
+    // Apply date range filters
+    if (filters?.dateStart) {
+      queryBuilder.andWhere('booking.dateStart >= :dateStart', {
+        dateStart: `${filters.dateStart}T00:00:00.000Z`,
+      });
+    }
+
+    if (filters?.dateEnd) {
+      queryBuilder.andWhere('booking.dateStart <= :dateEnd', {
+        dateEnd: `${filters.dateEnd}T23:59:59.999Z`,
+      });
+    }
+
+    queryBuilder
+      .orderBy('booking.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [bookings, total] = await queryBuilder.getManyAndCount();
 
     return { data: bookings, total, page, limit };
   }
